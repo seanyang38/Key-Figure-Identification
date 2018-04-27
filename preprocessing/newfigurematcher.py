@@ -58,7 +58,8 @@ def export(data, headers, filename):
 
 ########################################################
 
-#create dictionaries
+# create dictionaries
+
 figureorderdict = {}
 figuredatadict = {}
 
@@ -80,7 +81,7 @@ figuredatakeys = list(figuredatadict.keys())
 ########################################################
 
 # complete dataset
-# ['PMCID', 'FileName', 'SectionID', 'SectionHeading', 'FigureType', 'FigureID']
+# ['PMCID', 'FileName', 'SectionID', 'MaxSectionID', 'NormalizedSectionID', 'SectionHeading', 'FigureType', 'FigureID']
 finalparsedfiguredata = []
 
 # ['PMCID', 'FileName', 'FigureID']
@@ -127,21 +128,29 @@ for k in figureorderkeys:
         
         nomismatch = True
         possMatch = []
+        maxSectionID = 0
 
         for i in range(0, len(figureorderdict[k])):
             cond, dataindex = inFigureDatDict(k, figureorderdict[k][i][2])
 
             if cond is True:
-                #add to matches for curr pmcid (figure in both figure order & figure data)
-
                 currRow = figureorderdict[k][i]
+                currSectionID = int(figuredatadict[k][dataindex][1])
 
-                possMatch.append([currRow[0], currRow[1], figuredatadict[k][dataindex][1], figuredatadict[k][dataindex][2], figuredatadict[k][dataindex][3], figuredatadict[k][dataindex][4]])
+                if currSectionID > maxSectionID:
+                    maxSectionID = currSectionID
+
+                possMatch.append([currRow[0], currRow[1], currSectionID, -1, -1, figuredatadict[k][dataindex][2], figuredatadict[k][dataindex][3], figuredatadict[k][dataindex][4]])
             else:
-                #do nothing because lengths wouldn't be equal (?)
                 nomismatch = False
 
         if len(possMatch) > 0:
+            # normalize SectionID
+            for i in range(0, len(possMatch)):
+                currSection = possMatch[i][2]
+                possMatch[i][4] = float(currSection / maxSectionID)
+                possMatch[i][3] = maxSectionID
+
             finalparsedfiguredata.extend(possMatch)
             numMatches += 1
 
@@ -176,7 +185,7 @@ print(numUniqueFigureOrderPMCIDs)
 print("Number of Unique Figure Data PMCIDs: ")
 print(numUniqueFigureDataPMCIDs)
 print(" ")
-print("Number of Mismatches: ")
+#print("Number of Mismatches: ")
 #print(numMismatchs)
 
 ########################################################
@@ -189,4 +198,4 @@ print("Number of Mismatches: ")
 
 #export(mismatchfiguredatarows, ['PMCID', 'SectionID', 'SectionHeading', 'FigureType', 'FigureID'], 'newmismatchfiguredata.csv')
 
-export(finalparsedfiguredata, ['PMCID', 'FileName', 'SectionID', 'SectionHeading', 'FigureType', 'FigureID'], 'newcombinedfiguredata.csv')
+#export(finalparsedfiguredata, ['PMCID', 'FileName', 'SectionID', 'MaxSectionID', 'NormalizedSectionID', 'SectionHeading', 'FigureType', 'FigureID'], 'newcombinedfiguredata.csv')
