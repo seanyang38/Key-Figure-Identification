@@ -80,6 +80,10 @@ figuredatakeys = list(figuredatadict.keys())
 
 ########################################################
 
+# word / phrase frequency distributions
+sectionHeadingWordDistribution = {}
+sectionHeadingPhraseDistribution = {}
+
 # complete dataset
 # ['PMCID', 'FileName', 'SectionID', 'MaxSectionID', 'NormalizedSectionID', 'SectionHeading', 'FigureType', 'FigureID']
 finalparsedfiguredata = []
@@ -136,7 +140,24 @@ for k in figureorderkeys:
             if cond is True:
                 currRow = figureorderdict[k][i]
                 currSectionID = int(figuredatadict[k][dataindex][1])
+                currSectionHeading = figuredatadict[k][dataindex][2]
 
+                # Increment Frequency Counts For Section Heading Phrases
+                if currSectionHeading.title() in sectionHeadingPhraseDistribution:
+                    sectionHeadingPhraseDistribution[currSectionHeading.title()] = sectionHeadingPhraseDistribution[currSectionHeading.title()] + 1
+                else:
+                    sectionHeadingPhraseDistribution[currSectionHeading.title()] = 1
+
+                sectionHeadingSplit = currSectionHeading.split(' ')
+
+                # Increment Frequency Counts For Section Heading Words
+                for sectionWord in sectionHeadingSplit:
+                    if sectionWord.title() in sectionHeadingWordDistribution:
+                        sectionHeadingWordDistribution[sectionWord.title()] = sectionHeadingWordDistribution[sectionWord.title()] + 1
+                    else:
+                        sectionHeadingWordDistribution[sectionWord.title()] = 1
+
+                # Set Maximum Section ID For Current PMCID
                 if currSectionID > maxSectionID:
                     maxSectionID = currSectionID
 
@@ -188,6 +209,13 @@ print(" ")
 #print("Number of Mismatches: ")
 #print(numMismatchs)
 
+#print("Section Heading Phrase Frequency Distribution: ")
+#print(str(sectionHeadingPhraseDistribution).encode('utf-8'))
+#print(" ")
+
+#print("Section Heading Word Frequency Distribution: ")
+#print(str(sectionHeadingWordDistribution).encode('utf-8'))
+
 ########################################################
 
 #export(figureorderuniquerows, ['PMCID', 'FileName', 'SectionID', 'SectionHeading', 'FigureType', 'FigureID'], 'newuniquefigureorderdata.csv')
@@ -199,3 +227,16 @@ print(" ")
 #export(mismatchfiguredatarows, ['PMCID', 'SectionID', 'SectionHeading', 'FigureType', 'FigureID'], 'newmismatchfiguredata.csv')
 
 #export(finalparsedfiguredata, ['PMCID', 'FileName', 'SectionID', 'MaxSectionID', 'NormalizedSectionID', 'SectionHeading', 'FigureType', 'FigureID'], 'newcombinedfiguredata.csv')
+
+def exportDict(dict, headers, filename):
+    with open(filename, 'w', newline='', encoding='utf-8') as csv_file:
+        writer = csv.writer(csv_file)
+
+        if headers is not None:
+            writer.writerow(headers)
+
+        for key, value in dict.items():
+            writer.writerow([key, value])
+    
+exportDict(sectionHeadingPhraseDistribution, ['Phrase', 'Frequency'], 'sectionheadingphrases.csv')
+exportDict(sectionHeadingWordDistribution, ['Word', 'Frequency'], 'sectionheadingwords.csv')
