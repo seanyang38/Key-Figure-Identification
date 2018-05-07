@@ -1,8 +1,12 @@
 import csv
 import re
 import sys
+import numpy as np
+#import pandas as pd
 from sklearn.linear_model import LogisticRegression
-
+#import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, recall_score, precision_score, accuracy_score
+import random
 # code folder structure: ./preprocessing/
 # data folder structure: ./preprocessing/data/layout
 
@@ -23,6 +27,7 @@ while decrement:
 
 layout_train_data = []
 layout_train_target = []
+layout_train_data_full = []
 
 layout_test_data_full = []
 layout_test_data = []
@@ -50,13 +55,21 @@ with open('./data/layout/key_figures.csv', encoding='utf-8') as file:
 with open('./data/layout/new_layout_feature_clean_train.csv', encoding='utf-8') as file:
     reader = csv.reader(file, delimiter = ",")
     count = 0
-
+    cnt = 0
     for row in reader:
         if count > 0:
-            layout_train_data.append([float(row[2]), float(row[3]), float(row[4]), float(row[5]), float(row[6]), float(row[7]), float(row[8]), float(row[9]), float(row[10]), float(row[11]), float(row[12]), float(row[13])])
-            layout_train_target.append(float(row[14]))
+            # layosut_train_data.append([float(r) for r in row[2:]])
+            if row[14] =='0':
+                if random.random() <0.3:
+                    cnt+=1
+                    layout_train_data.append([float(row[2]), float(row[3]), float(row[4]), float(row[5]), float(row[6]), float(row[7]), float(row[8]), float(row[9]), float(row[10]), float(row[11]), float(row[12]), float(row[13])])
+                    layout_train_target.append(float(row[14]))
+            else:
+                layout_train_data.append([float(row[2]), float(row[3]), float(row[4]), float(row[5]), float(row[6]), float(row[7]), float(row[8]), float(row[9]), float(row[10]), float(row[11]), float(row[12]), float(row[13])])
+                layout_train_target.append(float(row[14]))                
+            layout_train_data_full.append(row)
         count += 1
-
+    print(cnt)
             #if count == 5: break # break after number of iterations for testing
 
 # read new_layout_feature_clean_test.csv
@@ -129,53 +142,79 @@ def create_new_layout_file():
 
 # create_new_layout_file()
 
-logistic_model = LogisticRegression()
+def createcombinedresultscsv(model_predictions):
+    if len(layout_test_data_full) == len(model_predictions):
+        layout_test_data_full_with_predictions = []
+        header = ['pmcid', 'img_name', 'section_ratio', 'img_order', 'result', 'discussion', 'method', 'case', 'material', 'implementation', 'design', 'content', 'model', 'experiment', 'is_key', 'prediction', 'accurate']
 
-logistic_model.fit(layout_train_data, layout_train_target)
+        num_pos_count = 0
+        num_pos_accurate = 0
 
-model_predictions = logistic_model.predict(layout_test_data)
+        num_neg_count = 0
+        num_neg_accurate = 0
 
-model_score = logistic_model.score(layout_test_data, layout_test_target)
+        for i in range(0, len(layout_test_data_full)):
+            count += 1
 
-print("MODEL SCORE: %s" % model_score)
+            curr_row = layout_test_data_full[i]
+            prediction = model_predictions[i]
 
-if len(layout_test_data_full) == len(model_predictions):
-    layout_test_data_full_with_predictions = []
-    header = ['pmcid', 'img_name', 'section_ratio', 'img_order', 'result', 'discussion', 'method', 'case', 'material', 'implementation', 'design', 'content', 'model', 'experiment', 'is_key', 'prediction', 'accurate']
+            accuracte = 0
 
-    num_pos_count = 0
-    num_pos_accurate = 0
+            if float(curr_row[14]) == float(prediction):
+                accuracte = 1
+            
+            if float(curr_row[14]) == 1:
+                num_pos_count += 1
+                if float(prediction) == 1:
+                    num_pos_accurate += 1
+            elif float(curr_row[14]) == 0:
+                num_neg_count += 1
+                if float(prediction) == 0:
+                    num_neg_accurate += 1
 
-    num_neg_count = 0
-    num_neg_accurate = 0
+            new_row = curr_row
+            new_row.append(prediction)
+            new_row.append(accuracte)
 
-    for i in range(0, len(layout_test_data_full)):
-        count += 1
+            layout_test_data_full_with_predictions.append(new_row)
 
-        curr_row = layout_test_data_full[i]
-        prediction = model_predictions[i]
+        print("Positive Prediction Accuracy: %s Percent" % ((num_pos_accurate / num_pos_count)*100))
+        print("Negative Prediction Accuracy: %s Percent" % ((num_neg_accurate / num_neg_count)*100))
 
-        accuracte = 0
+        export(layout_test_data_full_with_predictions, header, 'predicted_layout_feature_clean_test.csv')
 
-        if float(curr_row[14]) == float(prediction):
-            accuracte = 1
-        
-        if float(curr_row[14]) == 1:
-            num_pos_count += 1
-            if float(prediction) == 1:
-                num_pos_accurate += 1
-        elif float(curr_row[14]) == 0:
-            num_neg_count += 1
-            if float(prediction) == 0:
-                num_neg_accurate += 1
+def basiclogisticregression():
+    logistic_model = LogisticRegression()
 
-        new_row = curr_row
-        new_row.append(prediction)
-        new_row.append(accuracte)
+    logistic_model.fit(layout_train_data, layout_train_target)
 
-        layout_test_data_full_with_predictions.append(new_row)
+    model_predictions = logistic_model.predict(layout_test_data)
 
-    print("Positive Prediction Accuracy: %s Percent" % ((num_pos_accurate / num_pos_count)*100))
-    print("Negative Prediction Accuracy: %s Percent" % ((num_neg_accurate / num_neg_count)*100))
+    model_score = logistic_model.score(layout_test_data, layout_test_target)
 
-    export(layout_test_data_full_with_predictions, header, 'predicted_layout_feature_clean_test.csv')
+    model_train_score = logistic_model.score(layout_train_data, layout_train_target)
+    model_train_predictions = logistic_model.predict(layout_train_data)
+
+    print("TEST MODEL SCORE: %s" % model_score)
+    print(confusion_matrix(layout_test_target, model_predictions))
+
+    print("TRAIN MODEL SCORE: %s" % model_train_score)
+    print(confusion_matrix(layout_train_target, model_train_predictions))
+
+    #createcombinedresultscsv(model_predictions)
+
+basiclogisticregression()
+
+def equalsamplelogisticregression():
+    logistic_model = LogisticRegression()
+
+    test_data_frame =  pd.DataFrame(layout_train_data_full, columns = ['pmcid', 'img_name', 'section_ratio', 'img_order', 'result', 'discussion', 'method', 'case', 'material', 'implementation', 'design', 'content', 'model', 'experiment', 'is_key'])
+
+    num_pos = len(test_data_frame[test_data_frame['is_key'] is '1'])
+    num_neg = len(test_data_frame[test_data_frame['is_key'] is '0'])
+
+    #logistic_model.fit(layout_train_data, layout_train_target)
+
+    print(num_neg)
+    print(num_pos)
